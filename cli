@@ -1,0 +1,8 @@
+from colmeia.adapters.outbound.duckdb import DuckDBBeeAdapter
+from colmeia.adapters.inbound.cli import CLIAdapter
+from colmeia.core.use_cases.bee_management import BeeManagement
+
+if __name__ == "__main__":
+    use_case = BeeManagement(port=DuckDBBeeAdapter(path="database/hive.db"))
+    cli_adapter = CLIAdapter(use_case=use_case)
+    cli_adapter.run()
