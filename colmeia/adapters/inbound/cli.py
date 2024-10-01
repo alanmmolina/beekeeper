@@ -1,47 +1,95 @@
-import argparse
-from ...core.models.bee import Bee
-from ...core.models.worker import Worker
-from ...core.models.queen import Queen
-from ...core.models.drone import Drone
-from ...core.use_cases.bee_management import ManageBeeUseCase
-from typing import Optional
+import typer
+from ...core.use_cases.bee_management import BeeManagement
 
 class CLIAdapter:
-    def __init__(self, use_case: ManageBeeUseCase) -> None:
+    def __init__(self, use_case: BeeManagement) -> None:
         self.use_case = use_case
+        self.app = typer.Typer()
 
-    def run(self) -> None:
-        parser = argparse.ArgumentParser(description="Beehive Manager CLI")
-        parser.add_argument('--create', type=str, help='Create a new bee: worker, queen, or drone')
-        parser.add_argument('--id', type=int, help='Bee ID for operations like read, update, delete')
-        parser.add_argument('--type', type=str, help='Bee type: worker, queen, drone')
-        parser.add_argument('--health', type=int, help='Update health of the bee')
-        parser.add_argument('--delete', action='store_true', help='Delete a bee')
+        # Register CLI commands with Typer
+        self.app.command()(self.birth_bee)
+        self.app.command()(self.update_bee_health)
+        self.app.command()(self.kill_bee)
+        self.app.command()(self.find_bee_by_id)
+        self.app.command()(self.find_bees_by_type)
 
-        args = parser.parse_args()
+    def birth_bee(self, type: str, id: int):
+        """
+        Birth a new bee into the hive.
+        
+        Parameters:
+        - type: The type of bee (worker, queen, or drone).
+        - id: The unique ID for the new bee.
 
-        if args.create:
-            bee: Optional[Bee] = None
-            if args.create == 'worker':
-                bee = Worker(id=args.id)
-            elif args.create == 'queen':
-                bee = Queen(id=args.id)
-            elif args.create == 'drone':
-                bee = Drone(id=args.id)
-            if bee:
-                self.use_case.create_bee(bee)
+        Usage:
+        birth_bee --type worker --id 1
+        
+        A healthy new bee joins the hive!
+        """
+        self.use_case.birth_bee(type=type, id=id)
 
-        if args.id and args.health:
-            self.use_case.update_bee_health(bee_id=args.id, new_health=args.health)
+    def update_bee_health(self, id: int, health: int):
+        """
+        Nurse a bee back to full health.
+        
+        Parameters:
+        - id: The ID of the bee to heal.
+        - health: The new health value for the bee.
 
-        if args.id and args.delete:
-            self.use_case.delete_bee(bee_id=args.id)
+        Usage:
+        update_bee_health --id 1 --health 80
+        
+        This command restores a bee's health to the desired value. Let's get that buzz back!
+        """
+        self.use_case.update_bee_health(id, health)
 
-        if args.id and not args.delete and not args.health:
-            bee = self.use_case.read_bee_by_id(bee_id=args.id)
-            print(bee)
+    def kill_bee(self, id: int):
+        """
+        Remove a bee from the hive.
+        
+        Parameters:
+        - id: The ID of the bee to be... removed. 
 
-        if args.type and not args.id:
-            bees = self.use_case.read_bees_by_type(bee_type=args.type)
-            for bee in bees:
-                print(bee)
+        Usage:
+        kill_bee --id 1
+        
+        Sadly, all bees must return to the earth eventually. This command handles it.
+        """
+        self.use_case.kill_bee(id)
+
+    def find_bee_by_id(self, id: int):
+        """
+        Locate a bee by its ID.
+        
+        Parameters:
+        - id: The ID of the bee to find.
+
+        Usage:
+        find_bee_by_id --id 1
+        
+        This command helps you find a specific bee in the hive based on its unique ID. Busy bee, where are you?
+        """
+        return self.use_case.find_bee_by_id(id)
+
+    def find_bees_by_type(self, type: str):
+        """
+        Get a list of all bees of a certain type.
+        
+        Parameters:
+        - type: The type of bee (worker, queen, or drone) to search for.
+
+        Usage:
+        find-bees-by-type worker
+        
+        Whether you're looking for workers, queens, or drones, this command finds all the buzzing bees of that type.
+        """
+        return self.use_case.find_bees_by_type(type)
+
+    def run(self):
+        """
+        Run the CLI application.
+        
+        This method starts the Typer CLI app, enabling all the commands defined above.
+        Use this to interact with the bee hive from the command line.
+        """
+        self.app()
