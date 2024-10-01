@@ -8,4 +8,4 @@ class Bee:
         return self.__class__.__name__.lower()
 
     def __repr__(self):
-        return f"{self.type.capitalize()}(ID={self.id}, Health={self.health})"
+        return f"🐝 \033[1m{self.type.capitalize()}\033[0m(ID={self.id}, Health={self.health}%)"

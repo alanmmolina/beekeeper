@@ -1,43 +1,60 @@
-# core/use_cases/manage_bee.py
+from loguru import logger
+from typing import List, Optional
 
-import logging
 from ...ports.inbound import InboundPort
 from ...ports.outbound import OutboundPort
 from ...core.models.bee import Bee
-from typing import List, Optional
+from ...core.models.queen import Queen
+from ...core.models.drone import Drone
+from ...core.models.worker import Worker
 
 class BeeManagement(InboundPort):
-    def __init__(self, bee_gateway: OutboundPort) -> None:
-        self.bee_gateway = bee_gateway
-        logging.basicConfig(level=logging.INFO)
-        self.logger = logging.getLogger(__name__)
+    def __init__(self, port: OutboundPort) -> None:
+        self.port = port
+        logger.add("logs/hive.log", rotation="1 MB")  
 
-    def create_bee(self, bee: Bee) -> None:
-        self.bee_gateway.save_bee(bee)
-        self.logger.info(f"Bee created: {bee.id} of type {bee.type}.")
-
-    def read_bee_by_id(self, bee_id: int) -> Optional[Bee]:
-        bee = self.bee_gateway.get_bee_by_id(bee_id)
-        if bee:
-            self.logger.info(f"Bee retrieved: {bee.id} of type {bee.type}.")
+    def birth_bee(self, type: str, id: int, health: int = 100):
+        bee: Optional[Bee] = None
+        if type == "worker":
+            bee = Worker(id=id, health=health)
+        elif type == "queen":
+            bee = Queen(id=id, health=health)
+        elif type == "drone":
+            bee = Drone(id=id, health=health)
         else:
-            self.logger.warning(f"Bee with ID {bee_id} not found.")
+            logger.error(f"Oops! Tried to birth an unknown bee species: {type}. Buzz off!")
+            raise ValueError(f"Unknown bee type: {type}")
+
+        self.port.save(bee)
+        logger.success(f"A new baby {type.capitalize()} bee (ID {id}) has been born with {health}% health. Welcome to the hive!")
+        print(bee)
+
+    def find_bee_by_id(self, id: int) -> Optional[Bee]:
+        bee = self.port.load_by_id(id)
+        if bee:
+            logger.info(f"Bee ID {id} found! It's a {bee.type}. Buzzing strong!")
+        else:
+            logger.error(f"No bee with ID {id} in the hive. Someone's gone missing!")
         return bee
 
-    def read_bees_by_type(self, bee_type: str) -> List[Bee]:
-        bees = self.bee_gateway.get_bees_by_type(bee_type)
-        self.logger.info(f"{len(bees)} bees of type {bee_type} retrieved.")
+    def find_bees_by_type(self, type: str) -> List[Bee]:
+        bees = self.port.load_by_type(type)
+        if bees:
+            logger.info(f"{len(bees)} {type.capitalize()} bees found in the hive. Busy bees!")
+        else:
+            logger.error(f"No bees of type {type.capitalize()} found. Maybe they're out pollinating?")
         return bees
 
-    def update_bee_health(self, bee_id: int, new_health: int) -> None:
-        bee = self.bee_gateway.get_bee_by_id(bee_id)
+    def update_bee_health(self, id: int, health: int) -> None:
+        bee = self.port.load_by_id(id)
         if bee:
-            bee.health = new_health
-            self.bee_gateway.save_bee(bee)
-            self.logger.info(f"Bee ID {bee_id} health updated to {new_health}.")
+            bee.health = health
+            self.port.save(bee)
+            logger.info(f"Bee ID {id} has been healed up to {health}% health. Ready to buzz again!")
+            print(bee)
         else:
-            self.logger.warning(f"Bee with ID {bee_id} not found.")
+            logger.error(f"Bee with ID {id} not found! Can't fix what doesn't exist!")
 
-    def delete_bee(self, bee_id: int) -> None:
-        self.bee_gateway.delete_bee(bee_id)
-        self.logger.info(f"Bee ID {bee_id} deleted.")
+    def kill_bee(self, id: int) -> None:
+        self.port.delete(id)
+        logger.info(f"Bee ID {id} has been removed from the hive. Rest in peace, little one.")
